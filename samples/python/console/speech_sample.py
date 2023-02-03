@@ -356,7 +356,44 @@ def speech_recognize_continuous_from_file():
     speech_recognizer.stop_continuous_recognition()
     # </SpeechContinuousRecognitionWithFile>
 
+def speech_recognize_continuous_from_file_to_txt(file_path = 'your_audio_file_path'):
+    """performs continuous speech recognition with input from an audio file"""
+    # <SpeechContinuousRecognitionWithFile>
+    speech_config = speechsdk.SpeechConfig(subscription=speech_key, region=service_region)
+    audio_config = speechsdk.audio.AudioConfig(filename=file_path)
+    speech_recognizer = speechsdk.SpeechRecognizer(speech_config=speech_config, audio_config=audio_config)
 
+    done = False
+    def stop_cb(evt: speechsdk.SessionEventArgs):
+        """callback that signals to stop continuous recognition upon receiving an event `evt`"""
+        print('CLOSING on {}'.format(evt))
+        nonlocal done
+        done = True
+    
+    # Create a file for the transcript in local folder
+    myFile = open("transcript.txt", mode="w")
+    myFile.write('transcript:\n')
+    myFile.close()
+    myFile = open("transcript.txt", mode="a")
+    
+    # Connect callbacks to the events fired by the speech recognizer
+    speech_recognizer.recognized.connect(lambda evt: myFile.write('{}'.format(evt.result.text) ))
+    speech_recognizer.session_started.connect(lambda evt: print('SESSION STARTED: {}'.format(evt)))
+    speech_recognizer.session_stopped.connect(lambda evt: print('SESSION STOPPED {}'.format(evt)))
+    speech_recognizer.canceled.connect(lambda evt: print('CANCELED {}'.format(evt)))
+    # stop continuous recognition on either session stopped or canceled events
+    speech_recognizer.session_stopped.connect(stop_cb)
+    speech_recognizer.canceled.connect(stop_cb)
+
+    # Start continuous speech recognition
+    speech_recognizer.start_continuous_recognition()
+    while not done:
+        time.sleep(3.0)
+
+    speech_recognizer.stop_continuous_recognition()
+    # </SpeechContinuousRecognitionWithFile>
+    myFile.close()
+    
 def speech_recognize_continuous_async_from_microphone():
     """performs continuous speech recognition asynchronously with input from microphone"""
     speech_config = speechsdk.SpeechConfig(subscription=speech_key, region=service_region)
